@@ -22,9 +22,9 @@ final class ContentTest extends TestCase
         $zipPath = sys_get_temp_dir() . '/verstka_test_' . uniqid('', true) . '.zip';
         ZipFactory::buildContentZip(
             $zipPath,
-            media: ['hero.png' => 'pngdata'],
-            vmsJson: ['assets' => ['hero.png' => ['clientUrl' => 'dummy-hero.png']]],
-            vmsHtml: '<img src=dummy-hero.png>',
+            ['hero.png' => 'pngdata'],
+            ['assets' => ['hero.png' => ['clientUrl' => 'dummy-hero.png']]],
+            '<img src=dummy-hero.png>'
         );
 
         $tempDir = sys_get_temp_dir() . '/verstka_content_' . uniqid('', true);
@@ -39,7 +39,7 @@ final class ContentTest extends TestCase
             self::assertSame('<img src=dummy-hero.png>', $result->vmsHtml);
             self::assertSame(
                 ['assets' => ['hero.png' => ['clientUrl' => 'dummy-hero.png']]],
-                json_decode((string) $result->vmsJson, true, 512, JSON_THROW_ON_ERROR),
+                json_decode((string) $result->vmsJson, true, 512, JSON_THROW_ON_ERROR)
             );
         } finally {
             @unlink($zipPath);
@@ -50,7 +50,7 @@ final class ContentTest extends TestCase
     public function testExtractSkipsUnknownExtensions(): void
     {
         $zipPath = sys_get_temp_dir() . '/verstka_test_' . uniqid('', true) . '.zip';
-        ZipFactory::buildContentZip($zipPath, media: ['evil.exe' => 'bad', 'ok.png' => 'ok']);
+        ZipFactory::buildContentZip($zipPath, ['evil.exe' => 'bad', 'ok.png' => 'ok']);
         $tempDir = sys_get_temp_dir() . '/verstka_content_' . uniqid('', true);
         mkdir($tempDir);
 
@@ -68,9 +68,9 @@ final class ContentTest extends TestCase
         $zipPath = sys_get_temp_dir() . '/verstka_test_' . uniqid('', true) . '.zip';
         ZipFactory::buildFontsZip(
             $zipPath,
-            fonts: ['Inter-Regular.woff2' => 'font-bytes'],
-            vmsFontsJson: ['families' => []],
-            vmsFontsCss: '@font-face { src: url(dummy-Inter-Regular.woff2); }',
+            ['Inter-Regular.woff2' => 'font-bytes'],
+            ['families' => []],
+            '@font-face { src: url(dummy-Inter-Regular.woff2); }'
         );
         $tempDir = sys_get_temp_dir() . '/verstka_fonts_' . uniqid('', true);
         mkdir($tempDir);
@@ -90,7 +90,7 @@ final class ContentTest extends TestCase
     public function testDownloadZipSuccess(): void
     {
         $zipPath = sys_get_temp_dir() . '/verstka_test_' . uniqid('', true) . '.zip';
-        ZipFactory::buildContentZip($zipPath, media: ['x.png' => 'hi']);
+        ZipFactory::buildContentZip($zipPath, ['x.png' => 'hi']);
         $zipBytes = file_get_contents($zipPath);
 
         $mock = new MockHandler([new Response(200, [], $zipBytes)]);
