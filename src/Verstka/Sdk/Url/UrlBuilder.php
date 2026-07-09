@@ -11,7 +11,7 @@ final class UrlBuilder
     public static function buildAuthorizedContentUrl(
         string $contentUrl,
         string $apiKey,
-        string $materialId,
+        string $materialId
     ): string {
         if ($contentUrl === '') {
             throw new InvalidArgumentException('content_url must be a non-empty string');

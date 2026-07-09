@@ -21,7 +21,7 @@ final class SignatureService
         string $materialId,
         string $url,
         string $signature,
-        string $secret,
+        string $secret
     ): bool {
         if ($signature === '') {
             return false;
