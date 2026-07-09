@@ -1,0 +1,39 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: json, zip
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Install
+        run: composer install --prefer-dist --no-progress
+
+      - name: Test
+        run: vendor/bin/phpunit
+
+      - name: Publish to Packagist
+        env:
+          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        run: |
+          curl -fsS -X POST \
+            -H 'content-type: application/json' \
+            "https://packagist.org/api/update-package?username=${PACKAGIST_USERNAME}&apiToken=${PACKAGIST_TOKEN}" \
+            -d "{\"repository\":{\"url\":\"https://github.com/${{ github.repository }}\"}}"
