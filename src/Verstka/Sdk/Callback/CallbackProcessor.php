@@ -227,7 +227,7 @@ final class CallbackProcessor
         string $filename,
         string $publicUrl,
         ?string $vmsHtml,
-        ?array $vmsJsonDict
+        ?array &$vmsJsonDict
     ): ?string {
         $updatedHtml = $vmsHtml;
         if ($updatedHtml !== null) {

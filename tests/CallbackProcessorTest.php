@@ -64,6 +64,14 @@ final class CallbackProcessorTest extends TestCase
         self::assertSame('hero.png', $storage->mediaCalls[0][0]);
         self::assertArrayHasKey('ctx', $captured);
         self::assertStringContainsString('https://cdn.test/M1/hero.png', (string) $captured['ctx']->vmsHtml);
+        self::assertSame(
+            'https://cdn.test/M1/hero.png',
+            $captured['ctx']->vmsJson['assets']['hero.png']['clientUrl'] ?? null
+        );
+        self::assertSame(
+            'https://cdn.test/M1/hero.png',
+            $result->toResponse()['data']['vms_json']['assets']['hero.png']['clientUrl'] ?? null
+        );
     }
 
     public function testProcessMaterialCallbackRejectsInvalidSignature(): void
