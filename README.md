@@ -338,6 +338,24 @@ $result = $client->processMaterialCallback(
 
 If `allow` is `false`, the ZIP is not downloaded, no files are written, and Verstka receives `rc: 0`.
 
+## Opening a legacy article
+
+Requires a compatible backend/editor with legacy import enabled. The SDK submits HTML in a single `session/open` POST and requires `legacy_import_accepted: true` with a valid `legacy_attempt_id` in the response. It reports errors without retrying as a blank article. Ordinary JSON takes precedence when both inputs are supplied.
+
+```php
+$url = $client->getEditorUrl('article-123', null, null, [
+    'desktop_html' => $desktopHtml,
+    'mobile_html' => $mobileHtml,
+    'mobile_breakpoint' => 768,
+    'images_hostname' => 'https://old.example.org',
+    'fontscss_url' => 'https://old.example.org/fonts.css',
+]);
+```
+
+`legacyArticle` is the optional fourth argument after `materialId`, `vmsJson` and `metadata`; PHP 7.4 uses positional arguments. Pass `null` for `vmsJson` when importing HTML.
+
+Supply at least one HTML (maximum 5 MiB UTF-8 each); a pair requires a positive breakpoint. Media origins and font CSS are optional when not needed. Resource preparation runs on the backend as the editor opens, with progress. Concurrent requests for the same active material attach to its current attempt and retain its first input. After preparation finishes, a new legacy request reuses the session and processes the latest HTML again, even if unchanged. During an in-flight Save, replacement can return `409 session_busy`; retry after Save completes. Opening does not publish. Normal Save delivers fonts through `site_fonts_updated` before `article_saved`, using the existing callback processors.
+
 ## Callback authorization
 
 If your callback URL is protected by Basic Auth or a Bearer token, pass credentials in `metadata` when opening the editor.

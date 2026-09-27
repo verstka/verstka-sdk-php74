@@ -106,4 +106,67 @@ final class ClientTest extends TestCase
         self::assertSame('u', $body['metadata']['webhook_auth_user']);
         self::assertSame('p', $body['metadata']['webhook_auth_password']);
     }
+    public function testLegacySinglePostAcknowledgementAndUnicode(): void
+    {
+        $mock = new MockHandler([
+            new Response(200, [], '{"url":"ok","legacy_import_accepted":true,"legacy_attempt_id":"00000000-0000-4000-8000-000000000001"}'),
+        ]);
+        $client = new VerstkaClient(TestConfig::make(), new Client(['handler' => HandlerStack::create($mock)]));
+        $article = [
+            'desktop_html' => '<p>Привет &amp; мир</p>',
+            'mobile_html' => '<p>Мобильная версия</p>',
+            'mobile_breakpoint' => 768,
+            'images_hostname' => 'old.example.org',
+            'fontscss_url' => 'https://old.example.org/fonts.css',
+        ];
+        self::assertSame('ok', $client->getEditorUrl('M1', null, null, $article));
+        $request = $mock->getLastRequest();
+        self::assertSame('POST', $request->getMethod());
+        self::assertSame($article, json_decode((string) $request->getBody(), true)['legacy_article']);
+        self::assertSame(SignatureService::signMaterial('M1', TestConfig::CALLBACK_URL, TestConfig::API_SECRET), $request->getHeaderLine('X-Verstka-Signature'));
+        self::assertCount(0, $mock);
+    }
+
+    public function testLegacyPostErrorsDoNotRetryWithoutHtml(): void
+    {
+        foreach ([[404, '{}'], [403, '{}'], [422, '{}'], [503, '{}']] as [$status, $body]) {
+            $mock = new MockHandler([new Response($status, [], $body)]);
+            $client = new VerstkaClient(TestConfig::make(), new Client(['handler' => HandlerStack::create($mock)]));
+            try {
+                $client->getEditorUrl('M1', null, null, ['mobile_html' => 'a']);
+                self::fail('Expected refusal');
+            } catch (VerstkaApiError $exception) {
+                self::assertSame('POST', $mock->getLastRequest()->getMethod());
+                self::assertSame(['mobile_html' => 'a'], json_decode((string) $mock->getLastRequest()->getBody(), true)['legacy_article']);
+                self::assertCount(0, $mock);
+            }
+        }
+    }
+
+    public function testLegacyValidationAndJsonPrecedence(): void
+    {
+        $config = TestConfig::make();
+        foreach ([[], ['desktop_html' => 'a', 'mobile_html' => 'b'], ['desktop_html' => 'a', 'mobile_breakpoint' => true], ['desktop_html' => str_repeat('я', 2621441)]] as $article) {
+            try {
+                \Verstka\Sdk\Session\SessionBuilder::buildSessionPayload($config, 'M1', null, null, $article);
+                self::fail('Expected invalid legacy input');
+            } catch (VerstkaApiError $exception) {
+                self::assertNotSame('', $exception->getMessage());
+            }
+        }
+        $mock = new MockHandler([new Response(200, [], '{"url":"ok"}')]);
+        $client = new VerstkaClient($config, new Client(['handler' => HandlerStack::create($mock)]));
+        self::assertSame('ok', $client->getEditorUrl('M1', ['modern' => true], null, ['invalid' => true]));
+        self::assertSame('POST', $mock->getLastRequest()->getMethod());
+        self::assertArrayNotHasKey('legacy_article', json_decode((string) $mock->getLastRequest()->getBody(), true));
+    }
+
+    public function testLegacyAcknowledgementIsRequired(): void
+    {
+        $mock = new MockHandler([new Response(200, [], '{"url":"ok"}')]);
+        $client = new VerstkaClient(TestConfig::make(), new Client(['handler' => HandlerStack::create($mock)]));
+        $this->expectException(VerstkaApiError::class);
+        $this->expectExceptionMessage('did not acknowledge');
+        $client->getEditorUrl('M1', null, null, ['desktop_html' => 'a']);
+    }
 }

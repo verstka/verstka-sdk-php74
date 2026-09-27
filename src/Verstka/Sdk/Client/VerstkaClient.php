@@ -18,6 +18,7 @@ use Verstka\Sdk\Finalize\FontsFinalizeResult;
 use Verstka\Sdk\Finalize\FontsPreSaveContext;
 use Verstka\Sdk\Finalize\PreSaveDecision;
 use Verstka\Sdk\Session\SessionBuilder;
+use Verstka\Sdk\Session\LegacyArticle;
 use Verstka\Sdk\Storage\StorageAdapter;
 
 final class VerstkaClient
@@ -39,17 +40,20 @@ final class VerstkaClient
     /**
      * @param array<string, mixed>|string|null $vmsJson
      * @param array<string, mixed>|string|null $metadata
+     * @param array<string, mixed>|null $legacyArticle
      */
     public function getEditorUrl(
         string $materialId,
         $vmsJson = null,
-        $metadata = null
+        $metadata = null,
+        ?array $legacyArticle = null
     ): string {
         [$payload, $signature] = SessionBuilder::buildSessionPayload(
             $this->config,
             $materialId,
             $vmsJson,
-            $metadata
+            $metadata,
+            $legacyArticle
         );
 
         $response = $this->httpClient->request('POST', $this->config->getSessionOpenUrl(), [
@@ -63,6 +67,10 @@ final class VerstkaClient
             $response->getStatusCode(),
             (string) $response->getBody()
         );
+
+        if (isset($payload['legacy_article'])) {
+            LegacyArticle::requireAcknowledgement($data);
+        }
 
         return $data['url'];
     }

@@ -17,6 +17,7 @@ final class SessionBuilder
     /**
      * @param array<string, mixed>|string|null $vmsJson
      * @param array<string, mixed>|string|null $metadata
+     * @param array<string, mixed>|null $legacyArticle
      *
      * @return array{0: array<string, mixed>, 1: string}
      */
@@ -24,7 +25,8 @@ final class SessionBuilder
         VerstkaConfig $config,
         string $materialId,
         $vmsJson = null,
-        $metadata = null
+        $metadata = null,
+        ?array $legacyArticle = null
     ): array {
         if ($materialId === '') {
             throw new VerstkaApiError('material_id is required');
@@ -43,6 +45,8 @@ final class SessionBuilder
         $vmsJsonDict = self::coerceJson($vmsJson, VerstkaVmsJsonError::class);
         if ($vmsJsonDict !== null) {
             $payload['vms_json'] = $vmsJsonDict;
+        } elseif ($legacyArticle !== null) {
+            $payload['legacy_article'] = LegacyArticle::validate($legacyArticle);
         }
 
         $signature = SignatureService::signMaterial($materialId, $config->callbackUrl, $config->apiSecret);
